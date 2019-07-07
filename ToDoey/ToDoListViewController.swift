@@ -11,10 +11,14 @@ import UIKit
 class ToDoListViewController: UITableViewController {
     
     var itemArray = ["Find soup", "Kill Bill", "Go to the Beach"]
+    let defaults = UserDefaults.standard
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        if let array = defaults.array(forKey: "ToDoListArray") as? [String] {
+            itemArray = array
+        }
     }
     
     //MARK - Delegate Mathods
@@ -53,6 +57,9 @@ class ToDoListViewController: UITableViewController {
             if let text = textField.text {
                 self.itemArray.append(text)
             }
+            
+            self.defaults.set(self.itemArray, forKey: "ToDoListArray")
+            
             self.tableView.reloadData()
         }
         
