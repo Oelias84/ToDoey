@@ -9,9 +9,13 @@
 import UIKit
 import CoreData
 import RealmSwift
+import SwipeCellKit
+import ChameleonFramework
 
-class ToDoListViewController: UITableViewController {
+class ToDoListViewController: SwipeTableViewController {
         
+    @IBOutlet weak var searchBar: UISearchBar!
+    
     let realm = try! Realm()
     var items: Results<Item>?
     var selectedCategory : Category? {
@@ -23,51 +27,95 @@ class ToDoListViewController: UITableViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+        tableView.rowHeight = 80.0
+        tableView.separatorStyle = .none
     }
     
-    //MARK: - DataSource Methods
-//    override func tableView(_ tableView: UITableView, leadingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-//        if let item = items?[indexPath.row]{
-//
-//        }
-//    }
+    override func viewWillAppear(_ animated: Bool) {
+        
+        title = selectedCategory?.name
 
+        guard let colourHax = selectedCategory?.color else {fatalError()}
+        
+        updateNavBar(withHexCode: colourHax)
+    }
     
+    override func viewWillDisappear(_ animated: Bool) {        
+        updateNavBar(withHexCode: "1D9BF6")
+    }
+
+    //MARK: - Nav Bar Setup Methods
+    func updateNavBar(withHexCode colourHaxCode: String){
+        
+        guard let navBar = navigationController?.navigationBar else {fatalError("Navigation controller dose not exist")}
+        
+        guard let navBarColour = UIColor(hexString: colourHaxCode) else {fatalError()}
+
+        navBar.barTintColor = navBarColour
+        
+        navBar.tintColor = ContrastColorOf(navBarColour, returnFlat: true)
+        
+        navBar.largeTitleTextAttributes = [NSAttributedString.Key.foregroundColor: ContrastColorOf(navBarColour, returnFlat: true)]
+        
+        navBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor: ContrastColorOf(navBarColour, returnFlat: true)]
+        
+        searchBar.barTintColor = navBarColour
+
+    }
+    
+    //MARK: - TableView Datasource Methods
+
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
+        
         
         if let item = items?[indexPath.row]{
             cell.textLabel?.text = item.title
+            
             cell.accessoryType = item.isChecked ? .checkmark : .none
+            
+            if let categoryColour =  UIColor(hexString: selectedCategory!.color)?.flatten() {
+                cell.backgroundColor = categoryColour.darken(byPercentage: CGFloat(indexPath.row) / CGFloat(items!.count))
+                cell.textLabel?.textColor = ContrastColorOf(categoryColour, returnFlat: true)
+            }
+            
+            print(CGFloat(indexPath.row) / CGFloat(items!.count))
         }else{
             cell.textLabel?.text = "No Items Added"
         }
-        
         return cell
     }
+    
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return items?.count ?? 1
     }
     
-    //MARK: - TableView Delegate Methods
     
-    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    //MARK: - Modle Manupulation Methods
+    
+    func loadItems(){
         
-        if let item = items?[indexPath.row] {
+        items = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
+        
+        tableView.reloadData()
+    }
+    
+    
+    //MARK: - Delete data from swipe
+    
+    override func updateModel(at indexPath: IndexPath) {
+        if let item = self.items?[indexPath.row] {
             do{
-                try realm.write {
-                    item.isChecked = !item.isChecked
+                try self.realm.write {
+                    self.realm.delete(item)
                 }
-            }catch{
-                print("Error Saving Checked item \(error)")
+            }catch {
+                print("Error Deleting The Item \(error)")
             }
         }
-        tableView.reloadData()
-
-        tableView.deselectRow(at: indexPath, animated: true)
     }
+    
     
     //MARK: - Add New Item
     
@@ -110,13 +158,23 @@ class ToDoListViewController: UITableViewController {
         present(alert, animated: true, completion: nil)
     }
     
-    //MARK: - Modle Manupulation Methods
-
-    func loadItems(){
+    
+    //MARK: - TableView Delegate Methods
+    
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-        items = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
-        
+        if let item = items?[indexPath.row] {
+            do{
+                try realm.write {
+                    item.isChecked = !item.isChecked
+                }
+            }catch{
+                print("Error Saving Checked item \(error)")
+            }
+        }
         tableView.reloadData()
+
+        tableView.deselectRow(at: indexPath, animated: true)
     }
 }
 

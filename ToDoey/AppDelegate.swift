@@ -19,11 +19,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
             
             do{
-                let realm = try Realm()
-            }catch{
-                print("Error installing new Realm \(error)")
+                func doSomthing(){
+                    let _ = try! Realm()
+                }
             }
-            
             return true
         }
     }
